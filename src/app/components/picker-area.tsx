@@ -8,7 +8,8 @@ const componentToHex = (component: number) => {
     return hex.length == 1 ? '0' + hex : hex;
 };
 
-const rgbToHex = (r: number, g: number, b: number) => `#${componentToHex(r)}${componentToHex(g)}${componentToHex(b)}`;
+const rgbToHex = (transparency: number) =>
+    `#${componentToHex(transparency)}${componentToHex(transparency)}${componentToHex(transparency)}`;
 
 type PickerState = 'idle' | 'countdown' | 'picked' | 'display-winner';
 
@@ -124,8 +125,17 @@ export const PickerArea: React.FC = () => {
         }
     };
 
-    const transparency = Math.floor((1 - totalMilliseconds / COUNTDOWN_LENGTH_MS) * 255);
-    const containerBackgroundColor = isRunning ? rgbToHex(transparency, transparency, transparency) : '#000000';
+    const containerBackgroundColor = (() => {
+        switch (pickerState) {
+            case 'idle':
+                return '#000000';
+            case 'countdown':
+                return rgbToHex(Math.floor((1 - totalMilliseconds / COUNTDOWN_LENGTH_MS) * 255));
+            case 'picked':
+            case 'display-winner':
+                return '#ffffff';
+        }
+    })();
 
     return (
         <div id="container" className="flex h-screen">
