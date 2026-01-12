@@ -51,10 +51,10 @@ interface TouchTrackerProps {
     color: string;
 }
 
-const SIZE = 30;
+const SIZE = 80;
 
 const TouchTracker: React.FC<TouchTrackerProps> = ({ x, y, color }) => {
-    const top = y;
+    const top = y - SIZE / 2;
     const left = x - SIZE / 2;
 
     return (
