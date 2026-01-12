@@ -18,6 +18,7 @@ interface TouchTracker {
     color: string;
 }
 
+const COUNTDOWN_LENGTH_MS = 4000;
 const TOUCH_TARGET_COLORS = ['#E50000', '#FF8D00', '#FFEE00', '#028121', '#004CFF', '#770088'];
 
 export const PickerArea: React.FC = () => {
@@ -35,16 +36,16 @@ export const PickerArea: React.FC = () => {
         }
     };
 
-    const { isRunning, seconds, pause, restart } = useTimer({
+    const { isRunning, seconds, totalMilliseconds, pause, restart } = useTimer({
         expiryTimestamp: new Date(),
         autoStart: false,
         onExpire: onCountdownEnd,
-        interval: 100,
+        interval: 30,
     });
 
     const restartCountdown = (touches: Touch[]) => {
         const time = new Date();
-        time.setSeconds(time.getSeconds() + 5);
+        time.setMilliseconds(time.getMilliseconds() + COUNTDOWN_LENGTH_MS);
 
         restart(time, true);
 
@@ -123,8 +124,8 @@ export const PickerArea: React.FC = () => {
         }
     };
 
-    const transparency = touchTrackers.length * 24;
-    const containerBackgroundColor = rgbToHex(transparency, transparency, transparency);
+    const transparency = Math.floor((1 - totalMilliseconds / COUNTDOWN_LENGTH_MS) * 255);
+    const containerBackgroundColor = isRunning ? rgbToHex(transparency, transparency, transparency) : '#000000';
 
     return (
         <div id="container" className="flex h-screen">
@@ -159,7 +160,7 @@ interface TouchTrackerProps {
     color: string;
 }
 
-const SIZE = 80;
+const SIZE = 100;
 
 const TouchTracker: React.FC<TouchTrackerProps> = ({ x, y, color }) => {
     const top = y - SIZE / 2;
