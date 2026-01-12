@@ -10,7 +10,7 @@ const componentToHex = (component: number) => {
 
 const rgbToHex = (r: number, g: number, b: number) => `#${componentToHex(r)}${componentToHex(g)}${componentToHex(b)}`;
 
-type PickerState = 'idle' | 'countdown' | 'picked';
+type PickerState = 'idle' | 'countdown' | 'picked' | 'display-winner';
 
 interface TouchTracker {
     x: number;
@@ -69,9 +69,13 @@ export const PickerArea: React.FC = () => {
         );
     };
 
-    const resetCountdown = () => {
+    const displayWinner = () => {
+        setPickerState('display-winner');
+    };
+
+    const resetPicker = (touches: Touch[]) => {
+        updateTouchTrackers(touches);
         setPickerState('idle');
-        setTouchTrackers([]);
     };
 
     const onTouchEvent = (e: TouchEvent) => {
@@ -91,7 +95,10 @@ export const PickerArea: React.FC = () => {
             case 'idle':
                 if (touches.length > 1) {
                     restartCountdown(touches);
+                } else {
+                    updateTouchTrackers(touches);
                 }
+                break;
             case 'countdown':
                 if (touches.length !== touchTrackers.length) {
                     if (touches.length > 1) {
@@ -102,10 +109,17 @@ export const PickerArea: React.FC = () => {
                 } else {
                     updateTouchTrackers(touches);
                 }
+                break;
             case 'picked':
                 if (touches.length === 0) {
-                    resetCountdown();
+                    displayWinner();
                 }
+                break;
+            case 'display-winner':
+                if (touches.length > 0) {
+                    resetPicker(touches);
+                }
+                break;
         }
     };
 
@@ -132,12 +146,7 @@ export const PickerArea: React.FC = () => {
                 className="absolute top-0 w-screen touch-none pointer-none select-none whitespace-pre bg-gray-800 text-white"
             >
                 <code>
-                    {[
-                        containerBackgroundColor,
-                        pickerState,
-                        `Picking in: ${isRunning ? seconds : '5'}s`,
-                        ...debugMessages,
-                    ].join('\n')}
+                    {[pickerState, isRunning ? `picking in: ${seconds}s` : 'waiting...', ...debugMessages].join('\n')}
                 </code>
             </div>
         </div>
