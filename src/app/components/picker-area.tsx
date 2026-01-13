@@ -14,25 +14,25 @@ const rgbToHex = (transparency: number) =>
 type PickerState = 'idle' | 'countdown' | 'picked' | 'display-winner';
 
 interface TouchTracker {
+    id: number;
     x: number;
     y: number;
     color: string;
 }
 
 const COUNTDOWN_LENGTH_MS = 4000;
-const TOUCH_TARGET_COLORS = ['#E50000', '#FF8D00', '#FFEE00', '#028121', '#004CFF', '#770088'];
+const TOUCH_TARGET_COLORS = ['#009DDC', '#F0C808', '#F26430', '#6761A8', '#009B72'];
 
 export const PickerArea: React.FC = () => {
     const [debugMessages, setDebugMessages] = useState<string[]>([]);
 
     const [pickerState, setPickerState] = useState<PickerState>('idle');
     const [touchTrackers, setTouchTrackers] = useState<TouchTracker[]>([]);
+    const [winnerId, setWinnerId] = useState<number>();
 
     const onCountdownEnd = () => {
         if (pickerState === 'countdown') {
-            const pickedTouchTrackerIndex = Math.floor(Math.random() * touchTrackers.length);
-
-            setTouchTrackers([touchTrackers[pickedTouchTrackerIndex]]);
+            setWinnerId(touchTrackers[Math.floor(Math.random() * touchTrackers.length)].id);
             setPickerState('picked');
         }
     };
@@ -44,26 +44,23 @@ export const PickerArea: React.FC = () => {
         interval: 30,
     });
 
-    const restartCountdown = (touches: Touch[]) => {
+    const restartCountdown = () => {
         const time = new Date();
         time.setMilliseconds(time.getMilliseconds() + COUNTDOWN_LENGTH_MS);
 
         restart(time, true);
-
         setPickerState('countdown');
-        updateTouchTrackers(touches);
     };
 
-    const cancelCountdown = (touches: Touch[]) => {
+    const cancelCountdown = () => {
         pause();
-
         setPickerState('idle');
-        updateTouchTrackers(touches);
     };
 
     const updateTouchTrackers = (touches: Touch[]) => {
         setTouchTrackers(
-            touches.map(({ clientX, clientY }, index) => ({
+            touches.map(({ clientX, clientY, identifier }, index) => ({
+                id: identifier,
                 x: clientX,
                 y: clientY,
                 color: TOUCH_TARGET_COLORS[index],
@@ -75,9 +72,9 @@ export const PickerArea: React.FC = () => {
         setPickerState('display-winner');
     };
 
-    const resetPicker = (touches: Touch[]) => {
-        updateTouchTrackers(touches);
+    const resetPicker = () => {
         setPickerState('idle');
+        setWinnerId(undefined);
     };
 
     const onTouchEvent = (e: TouchEvent) => {
@@ -93,23 +90,21 @@ export const PickerArea: React.FC = () => {
             ),
         );
 
+        updateTouchTrackers(touches);
+
         switch (pickerState) {
             case 'idle':
                 if (touches.length > 1) {
-                    restartCountdown(touches);
-                } else {
-                    updateTouchTrackers(touches);
+                    restartCountdown();
                 }
                 break;
             case 'countdown':
                 if (touches.length !== touchTrackers.length) {
                     if (touches.length > 1) {
-                        restartCountdown(touches);
+                        restartCountdown();
                     } else {
-                        cancelCountdown(touches);
+                        cancelCountdown();
                     }
-                } else {
-                    updateTouchTrackers(touches);
                 }
                 break;
             case 'picked':
@@ -119,47 +114,45 @@ export const PickerArea: React.FC = () => {
                 break;
             case 'display-winner':
                 if (touches.length > 0) {
-                    resetPicker(touches);
+                    resetPicker();
                 }
                 break;
         }
     };
 
-    const containerBackgroundColor = (() => {
-        switch (pickerState) {
-            case 'idle':
-                return '#000000';
-            case 'countdown':
-                return rgbToHex(Math.floor((1 - totalMilliseconds / COUNTDOWN_LENGTH_MS) * 255));
-            case 'picked':
-            case 'display-winner':
-                return '#ffffff';
-        }
-    })();
-
     return (
         <div id="container" className="flex h-screen">
             <div
                 id="interaction-area"
-                className="flex-1 touch-none pointer-none select-none"
+                className="flex-1 touch-none pointer-none select-none bg-gray-800"
                 onTouchStart={onTouchEvent}
                 onTouchMove={onTouchEvent}
                 onTouchEnd={onTouchEvent}
                 onTouchCancel={onTouchEvent}
-                style={{ backgroundColor: containerBackgroundColor }}
             >
-                {touchTrackers.map(({ x, y, color }, index) => (
-                    <TouchTracker key={`touch-tracker-${index}`} x={x} y={y} color={color} />
+                {touchTrackers.map(({ id, x, y, color }, index) => (
+                    <TouchTracker
+                        key={`touch-tracker-${index}`}
+                        x={x}
+                        y={y}
+                        color={color}
+                        state={winnerId === undefined ? 'neutral' : winnerId === id ? 'winner' : 'loser'}
+                    />
                 ))}
+                {isRunning && seconds < COUNTDOWN_LENGTH_MS / 1000 && (
+                    <div className="absolute touch-none pointer-none top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-8xl font-sans text-white">
+                        {seconds}
+                    </div>
+                )}
             </div>
-            <div
+            {/* <div
                 id="debug-area"
                 className="absolute top-0 w-screen touch-none pointer-none select-none whitespace-pre bg-gray-800 text-white"
             >
                 <code>
                     {[pickerState, isRunning ? `picking in: ${seconds}s` : 'waiting...', ...debugMessages].join('\n')}
                 </code>
-            </div>
+            </div> */}
         </div>
     );
 };
@@ -168,18 +161,41 @@ interface TouchTrackerProps {
     x: number;
     y: number;
     color: string;
+    state: 'neutral' | 'loser' | 'winner';
 }
 
 const SIZE = 100;
 
-const TouchTracker: React.FC<TouchTrackerProps> = ({ x, y, color }) => {
+const TouchTracker: React.FC<TouchTrackerProps> = ({ x, y, color, state }) => {
     const top = y - SIZE / 2;
     const left = x - SIZE / 2;
 
     return (
-        <div
-            className="absolute touch-none pointer-none"
-            style={{ top, left, width: SIZE, height: SIZE, borderRadius: SIZE, backgroundColor: color }}
-        />
+        <>
+            {state === 'winner' && (
+                <div
+                    className="absolute touch-none pointer-none animate-ping"
+                    style={{
+                        top,
+                        left,
+                        width: SIZE,
+                        height: SIZE,
+                        borderRadius: SIZE,
+                        backgroundColor: color,
+                    }}
+                />
+            )}
+            <div
+                className="absolute touch-none pointer-none shadow-xl/20"
+                style={{
+                    top,
+                    left,
+                    width: SIZE,
+                    height: SIZE,
+                    borderRadius: SIZE,
+                    backgroundColor: color,
+                }}
+            />
+        </>
     );
 };
