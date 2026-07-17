@@ -23,7 +23,7 @@ const eslintConfig = defineConfig([
                     trailingComma: 'all',
                     tabWidth: 4,
                     singleQuote: true,
-                    printWidth: 120,
+                    printWidth: 150,
                 },
             ],
         },
