@@ -1,1 +1,2 @@
-export * from './picker-area'
+export * from './picker-area';
+export * from './controls';

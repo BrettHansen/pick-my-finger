@@ -2,25 +2,27 @@ export class ColorManager {
     private COLORS = ['red', 'yellow', 'green', 'blue', 'black', 'grey'];
 
     private availableColors = [...this.COLORS];
-    private idColorMap: Record<number, string> = {};
+    private idColorMap = new Map<number, string>();
 
-    getColor = (id: number) => {
-        if (id in this.idColorMap) {
-            return this.idColorMap[id];
-        }
+    public getDefaultColor = () => 'white';
 
-        const color = this.availableColors.shift() ?? 'white';
-        this.idColorMap[id] = color;
-
-        return color;
+    public getColor = (id: number) => {
+        return this.idColorMap.getOrInsertComputed(id, () => this.availableColors.shift() ?? this.getDefaultColor());
     };
 
-    releaseColor = (id: number) => {
-        if (id in this.idColorMap) {
-            const color = this.idColorMap[id];
+    public releaseColor = (id: number) => {
+        const color = this.idColorMap.get(id);
 
-            delete this.idColorMap[id];
-            this.availableColors.unshift(color);
+        if (color) {
+            if (color !== this.getDefaultColor()) {
+                this.availableColors.unshift(color);
+            }
+
+            this.idColorMap.delete(id);
         }
+    };
+
+    public releaseAllColors = () => {
+        this.idColorMap.keys().forEach((id) => this.releaseColor(id));
     };
 }

@@ -2,32 +2,56 @@
 
 import { TouchEvent, useRef, useState } from 'react';
 import { useTimer } from 'react-timer-hook';
-import { TouchCircle } from './touch-tracker';
+import { TouchCircle } from './touch-circle';
 import { TouchTracker, TouchTrackerManager } from './touch-tracker-manager';
+import { Controls, TeamMode } from './controls';
+import { CountdownDisplay } from './countdown-display';
 
 export type PickerState = 'idle' | 'countdown' | 'picked' | 'reset';
 
-const COUNTDOWN_LENGTH_MS = 4000;
+const COUNTDOWN_LENGTH_MS = 3500;
 
 export const PickerArea: React.FC = () => {
     const [pickerState, setPickerState] = useState<PickerState>('idle');
     const [touchTrackers, setTouchTrackers] = useState<TouchTracker[]>([]);
+    const [teamsMode, setTeamsMode] = useState<TeamMode>('none');
+    const [stickyMode, setStickyMode] = useState(false);
+    const [isControlLocked, setIsControlLocked] = useState(false);
 
     const trackerManager = useRef(new TouchTrackerManager()).current;
 
+    const onTeamModeChange = (newTeamMode: TeamMode) => {
+        trackerManager.removeAllTrackers();
+        updateGameState();
+
+        setTeamsMode(newTeamMode);
+    };
+
+    const onStickyModeChange = (newStickyMode: boolean) => {
+        trackerManager.removeAllTrackers();
+        updateGameState();
+
+        setStickyMode(newStickyMode);
+    };
+
     const onCountdownEnd = () => {
         if (pickerState === 'countdown') {
-            trackerManager.rankTrackers();
-            setTouchTrackers(trackerManager.getTrackers());
+            if (teamsMode === 'none') {
+                trackerManager.rankTrackers();
+            } else {
+                trackerManager.assignTeams(teamsMode);
+            }
+
             setPickerState('picked');
+            updateGameState();
         }
     };
 
-    const { isRunning, seconds, pause, restart } = useTimer({
+    const { isRunning, totalMilliseconds, pause, restart } = useTimer({
         expiryTimestamp: new Date(),
         autoStart: false,
         onExpire: onCountdownEnd,
-        interval: 30,
+        interval: 100,
     });
 
     const onTouchStart = (e: TouchEvent) => {
@@ -39,7 +63,7 @@ export const PickerArea: React.FC = () => {
 
         for (let index = 0; index < e.changedTouches.length; index += 1) {
             const touch = e.changedTouches.item(index);
-            trackerManager.addTracker(touch.identifier, touch.clientX, touch.clientY);
+            trackerManager.addTracker(touch.identifier, touch.clientX, touch.clientY, teamsMode === 'none');
         }
 
         updateGameState();
@@ -74,21 +98,23 @@ export const PickerArea: React.FC = () => {
         restart(time, true);
         setPickerState('countdown');
         trackerManager.resetTrackerRanks();
-
-        setTouchTrackers(trackerManager.getTrackers());
     };
 
     const updateGameState = () => {
         switch (pickerState) {
             case 'idle':
-                trackerManager.removeInactiveTrackers();
+                if (!stickyMode) {
+                    trackerManager.removeInactiveTrackers();
+                }
 
                 if (trackerManager.getTrackers().length > 1) {
                     restartCountdown();
                 }
                 break;
             case 'countdown':
-                trackerManager.removeInactiveTrackers();
+                if (!stickyMode) {
+                    trackerManager.removeInactiveTrackers();
+                }
 
                 if (trackerManager.getTrackers().length !== touchTrackers.length) {
                     if (trackerManager.getTrackers().length > 1) {
@@ -113,27 +139,35 @@ export const PickerArea: React.FC = () => {
         }
 
         setTouchTrackers(trackerManager.getTrackers());
+        setIsControlLocked(trackerManager.getActiveTrackers().length > 0);
     };
 
     return (
-        <div id="container" className="flex h-screen">
+        <div id="container" className="flex h-screen bg-neutral-700">
             <div
                 id="interaction-area"
-                className="flex-1 touch-none pointer-none select-none bg-gray-200"
+                className="flex-1 touch-none pointer-none select-none"
                 onTouchStart={onTouchStart}
                 onTouchMove={onTouchMove}
                 onTouchEnd={onTouchEnd}
                 onTouchCancel={onTouchEnd}
             >
                 {touchTrackers.map(({ id, x, y, color, rank }) => (
-                    <TouchCircle key={`touch-tracker-${id}`} x={x} y={y} color={color} rank={rank} state="neutral" />
+                    <TouchCircle key={`touch-tracker-${id}`} x={x} y={y} color={color} rank={rank} />
                 ))}
-                {isRunning && seconds < COUNTDOWN_LENGTH_MS / 1000 && (
-                    <div className="absolute touch-none pointer-none top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-8xl font-sans text-white">
-                        {seconds}
+                {isRunning && (
+                    <div className="absolute touch-none pointer-none top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                        <CountdownDisplay millis={totalMilliseconds} />
                     </div>
                 )}
             </div>
+            <Controls
+                disabled={isControlLocked}
+                teamMode={teamsMode}
+                onTeamModeChange={onTeamModeChange}
+                stickyMode={stickyMode}
+                onStickyModeChange={onStickyModeChange}
+            />
         </div>
     );
 };

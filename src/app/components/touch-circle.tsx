@@ -2,7 +2,6 @@ interface TouchCircle {
     x: number;
     y: number;
     color: string;
-    state: 'neutral' | 'loser' | 'winner';
     rank?: number;
 }
 
@@ -27,7 +26,7 @@ export const TouchCircle: React.FC<TouchCircle> = ({ x, y, color, rank }) => {
                 textAlign: 'center',
             }}
         >
-            {rank !== undefined && <p className="text-8xl font-sans text-white text-shadow-lg">{rank + 1}</p>}
+            {rank !== undefined && <p className="text-8xl font-bold text-white text-shadow-lg/20">{rank + 1}</p>}
         </div>
     );
 

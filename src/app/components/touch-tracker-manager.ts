@@ -7,21 +7,28 @@ export interface TouchTracker {
     color: string;
     active: boolean;
     rank?: number;
+    teamId?: number;
 }
 
 export class TouchTrackerManager {
     private touchTrackers = new Map<number, TouchTracker>();
     private colorManager = new ColorManager();
 
-    getTrackers = () => [...this.touchTrackers.values()];
+    public getTrackers = () => [...this.touchTrackers.values()];
 
-    getActiveTrackers = () => this.getTrackers().filter(({ active }) => active);
+    public getActiveTrackers = () => this.getTrackers().filter(({ active }) => active);
 
-    addTracker = (id: number, x: number, y: number) => {
-        this.touchTrackers.set(id, { id, x, y, active: true, color: this.colorManager.getColor(id) });
+    public addTracker = (id: number, x: number, y: number, assignColor: boolean = true) => {
+        this.touchTrackers.set(id, {
+            id,
+            x,
+            y,
+            active: true,
+            color: assignColor ? this.colorManager.getColor(id) : this.colorManager.getDefaultColor(),
+        });
     };
 
-    updateTrackerPosition = (id: number, x: number, y: number) => {
+    public updateTrackerPosition = (id: number, x: number, y: number) => {
         const existingTracker = this.touchTrackers.get(id);
         if (existingTracker) {
             existingTracker.x = x;
@@ -29,19 +36,26 @@ export class TouchTrackerManager {
         }
     };
 
-    deactivateTracker = (id: number) => {
+    public deactivateTracker = (id: number) => {
         const existingTracker = this.touchTrackers.get(id);
+
         if (existingTracker) {
             existingTracker.active = false;
         }
     };
 
-    removeTracker = (id: number) => {
-        this.touchTrackers.delete(id);
+    public removeTracker = (id: number) => {
+        const existingTracker = this.touchTrackers.get(id);
+
+        if (existingTracker && existingTracker.teamId) {
+            this.colorManager.releaseColor(existingTracker.teamId);
+        }
+
         this.colorManager.releaseColor(id);
+        this.touchTrackers.delete(id);
     };
 
-    removeInactiveTrackers = () => {
+    public removeInactiveTrackers = () => {
         this.touchTrackers.forEach(({ id, active }) => {
             if (!active) {
                 this.removeTracker(id);
@@ -49,13 +63,31 @@ export class TouchTrackerManager {
         });
     };
 
-    rankTrackers = () => {
-        const shuffledTrackers = [...this.touchTrackers.values().map<[TouchTracker, number]>((tracker) => [tracker, Math.random()])];
-        shuffledTrackers.sort((a, b) => a[1] - b[1]);
-        shuffledTrackers.forEach(([tracker], index) => (tracker.rank = index));
+    public removeAllTrackers = () => {
+        this.touchTrackers.forEach(({ id }) => this.removeTracker(id));
     };
 
-    resetTrackerRanks = () => {
+    public rankTrackers = () => {
+        this.getShuffledTrackers().forEach(([tracker], index) => (tracker.rank = index));
+    };
+
+    public resetTrackerRanks = () => {
         this.touchTrackers.forEach((tracker) => (tracker.rank = undefined));
+    };
+
+    public assignTeams = (numberOfTeams: number) => {
+        this.getShuffledTrackers().forEach(([tracker], index) => {
+            const teamId = index % numberOfTeams;
+            const teamColor = this.colorManager.getColor(teamId);
+            tracker.teamId = teamId;
+            tracker.rank = index % numberOfTeams;
+            tracker.color = teamColor;
+        });
+    };
+
+    private getShuffledTrackers = () => {
+        const shuffledTrackers = [...this.touchTrackers.values().map<[TouchTracker, number]>((tracker) => [tracker, Math.random()])];
+        shuffledTrackers.sort((a, b) => a[1] - b[1]);
+        return shuffledTrackers;
     };
 }
