@@ -13,7 +13,7 @@ export const TouchCircle: React.FC<TouchCircle> = ({ x, y, color, rank }) => {
 
     const renderCircle = (rank?: number, additionalClasses = '') => (
         <div
-            className={`absolute touch-none pointer-none shadow-xl/20 ${additionalClasses}`}
+            className={`absolute touch-none pointer-none shadow-xl/20 z-0 ${additionalClasses}`}
             style={{
                 top,
                 left,

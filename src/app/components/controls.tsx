@@ -1,5 +1,8 @@
 'use client';
 
+import type { ColorIndicator } from './color-manager';
+import { ColorPalette } from './color-palette';
+
 export type TeamMode = 'none' | 2 | 3;
 
 interface ControlsProps {
@@ -8,6 +11,7 @@ interface ControlsProps {
     onTeamModeChange: (mode: TeamMode) => void;
     stickyMode: boolean;
     onStickyModeChange: (stickyMode: boolean) => void;
+    colorIndicators: ColorIndicator[];
 }
 
 type Value = string | number | boolean;
@@ -36,33 +40,40 @@ const SegmentedControl: React.FC<{
     );
 };
 
-export const Controls: React.FC<ControlsProps> = ({ disabled, teamMode, onTeamModeChange, stickyMode, onStickyModeChange }) => (
-    <div className={`fixed bottom-0 left-0 right-0 flex justify-center pointer-events-none ${disabled ? 'opacity-50' : ''}`}>
-        <div className="flex items-start gap-6 px-4 py-3 pointer-events-auto">
-            <div className="flex flex-col items-center gap-1.5">
-                <span className="text-[10px] font-bold tracking-widest text-white/40 uppercase">Teams</span>
-                <SegmentedControl
-                    disabled={disabled}
-                    options={[
-                        { value: 'none', label: 'NONE' },
-                        { value: 2, label: 'TWO' },
-                        { value: 3, label: 'THREE' },
-                    ]}
-                    selected={teamMode}
-                    onChange={(value) => onTeamModeChange(value as TeamMode)}
-                />
-            </div>
-            <div className="flex flex-col items-center gap-1.5">
-                <span className="text-[10px] font-bold tracking-widest text-white/40 uppercase">Sticky</span>
-                <SegmentedControl
-                    disabled={disabled}
-                    options={[
-                        { value: false, label: 'OFF' },
-                        { value: true, label: 'ON' },
-                    ]}
-                    selected={stickyMode}
-                    onChange={(value) => onStickyModeChange(value === true)}
-                />
+export const Controls: React.FC<ControlsProps> = ({ disabled, teamMode, onTeamModeChange, stickyMode, onStickyModeChange, colorIndicators }) => (
+    <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center pointer-events-none z-10 bg-neutral-700 rounded-t-2xl shadow-[0_-4px_12px_rgba(0,0,0,0.4)]">
+        <div className="flex flex-col items-center gap-4 p-4 pointer-events-auto">
+            <ColorPalette colorIndicators={colorIndicators} />
+            <div className="flex items-start gap-6">
+                <div className="flex flex-col items-center gap-1.5">
+                    <span className="text-[10px] font-bold tracking-widest text-white/40 uppercase">Teams</span>
+                    <div className={disabled ? 'opacity-50' : ''}>
+                        <SegmentedControl
+                            disabled={disabled}
+                            options={[
+                                { value: 'none', label: 'NONE' },
+                                { value: 2, label: 'TWO' },
+                                { value: 3, label: 'THREE' },
+                            ]}
+                            selected={teamMode}
+                            onChange={(value) => onTeamModeChange(value as TeamMode)}
+                        />
+                    </div>
+                </div>
+                <div className="flex flex-col items-center gap-1.5">
+                    <span className="text-[10px] font-bold tracking-widest text-white/40 uppercase">Sticky</span>
+                    <div className={disabled ? 'opacity-50' : ''}>
+                        <SegmentedControl
+                            disabled={disabled}
+                            options={[
+                                { value: false, label: 'OFF' },
+                                { value: true, label: 'ON' },
+                            ]}
+                            selected={stickyMode}
+                            onChange={(value) => onStickyModeChange(value === true)}
+                        />
+                    </div>
+                </div>
             </div>
         </div>
     </div>

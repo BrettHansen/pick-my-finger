@@ -1,10 +1,24 @@
+export interface ColorIndicator {
+    color: string;
+    isAvailable: boolean;
+}
+
 export class ColorManager {
     private COLORS = ['red', 'yellow', 'green', 'blue', 'black', 'grey'];
 
     private availableColors = [...this.COLORS];
     private idColorMap = new Map<number, string>();
+    private defaultColor = 'white';
 
-    public getDefaultColor = () => 'white';
+    public getDefaultColor = () => this.defaultColor;
+
+    public getColorIndicators = (): ColorIndicator[] => {
+        const assignedColors = new Set([...this.idColorMap.values()]);
+        return this.COLORS.map((color) => ({
+            color,
+            isAvailable: !assignedColors.has(color),
+        }));
+    };
 
     public getColor = (id: number) => {
         return this.idColorMap.getOrInsertComputed(id, () => this.availableColors.shift() ?? this.getDefaultColor());

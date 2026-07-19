@@ -1,15 +1,17 @@
 'use client';
 
-import { TouchEvent, useRef, useState } from 'react';
+import { TouchEvent, useEffect, useRef, useState } from 'react';
 import { useTimer } from 'react-timer-hook';
 import { TouchCircle } from './touch-circle';
 import { TouchTracker, TouchTrackerManager } from './touch-tracker-manager';
 import { Controls, TeamMode } from './controls';
 import { CountdownDisplay } from './countdown-display';
+import { ColorIndicator } from './color-manager';
 
-export type PickerState = 'idle' | 'countdown' | 'picked' | 'reset';
+export type PickerState = 'idle' | 'countdown' | 'picked' | 'resetable';
 
 const COUNTDOWN_LENGTH_MS = 3500;
+const SHOW_DEBUG_INFO = process.env.SHOW_DEBUG_INFO === 'true';
 
 export const PickerArea: React.FC = () => {
     const [pickerState, setPickerState] = useState<PickerState>('idle');
@@ -17,8 +19,13 @@ export const PickerArea: React.FC = () => {
     const [teamsMode, setTeamsMode] = useState<TeamMode>('none');
     const [stickyMode, setStickyMode] = useState(false);
     const [isControlLocked, setIsControlLocked] = useState(false);
+    const [colorIndicators, setColorIndicators] = useState<ColorIndicator[]>();
 
     const trackerManager = useRef(new TouchTrackerManager()).current;
+
+    useEffect(() => {
+        setColorIndicators(trackerManager.getColorManager().getColorIndicators());
+    }, []);
 
     const onTeamModeChange = (newTeamMode: TeamMode) => {
         trackerManager.removeAllTrackers();
@@ -42,8 +49,10 @@ export const PickerArea: React.FC = () => {
                 trackerManager.assignTeams(teamsMode);
             }
 
-            setPickerState('picked');
+            trackerManager.deactivateAllTrackers();
             updateGameState();
+
+            setPickerState(trackerManager.getLiveTrackers().length > 0 ? 'picked' : 'resetable');
         }
     };
 
@@ -61,8 +70,7 @@ export const PickerArea: React.FC = () => {
             return;
         }
 
-        for (let index = 0; index < e.changedTouches.length; index += 1) {
-            const touch = e.changedTouches.item(index);
+        for (const touch of Array.from(e.changedTouches)) {
             trackerManager.addTracker(touch.identifier, touch.clientX, touch.clientY, teamsMode === 'none');
         }
 
@@ -72,8 +80,7 @@ export const PickerArea: React.FC = () => {
     const onTouchMove = (e: TouchEvent) => {
         e.preventDefault();
 
-        for (let index = 0; index < e.changedTouches.length; index += 1) {
-            const touch = e.changedTouches.item(index);
+        for (const touch of Array.from(e.changedTouches)) {
             trackerManager.updateTrackerPosition(touch.identifier, touch.clientX, touch.clientY);
         }
 
@@ -83,9 +90,8 @@ export const PickerArea: React.FC = () => {
     const onTouchEnd = (e: TouchEvent) => {
         e.preventDefault();
 
-        for (let index = 0; index < e.changedTouches.length; index += 1) {
-            const touch = e.changedTouches.item(index);
-            trackerManager.deactivateTracker(touch.identifier);
+        for (const touch of Array.from(e.changedTouches)) {
+            trackerManager.killTracker(touch.identifier);
         }
 
         updateGameState();
@@ -104,7 +110,7 @@ export const PickerArea: React.FC = () => {
         switch (pickerState) {
             case 'idle':
                 if (!stickyMode) {
-                    trackerManager.removeInactiveTrackers();
+                    trackerManager.removeDeadTrackers();
                 }
 
                 if (trackerManager.getTrackers().length > 1) {
@@ -113,7 +119,7 @@ export const PickerArea: React.FC = () => {
                 break;
             case 'countdown':
                 if (!stickyMode) {
-                    trackerManager.removeInactiveTrackers();
+                    trackerManager.removeDeadTrackers();
                 }
 
                 if (trackerManager.getTrackers().length !== touchTrackers.length) {
@@ -126,24 +132,28 @@ export const PickerArea: React.FC = () => {
                 }
                 break;
             case 'picked':
-                if (trackerManager.getActiveTrackers().length === 0) {
-                    setPickerState('reset');
+                if (trackerManager.getLiveTrackers().length === 0) {
+                    setPickerState('resetable');
                 }
                 break;
-            case 'reset':
+            case 'resetable':
                 if (trackerManager.getTrackers().length > 0) {
-                    trackerManager.removeInactiveTrackers();
+                    trackerManager.removeDeadTrackers();
                     setPickerState('idle');
                 }
                 break;
         }
 
         setTouchTrackers(trackerManager.getTrackers());
-        setIsControlLocked(trackerManager.getActiveTrackers().length > 0);
+        setColorIndicators(trackerManager.getColorManager().getColorIndicators());
+        setIsControlLocked(trackerManager.getLiveTrackers().length > 0);
     };
 
     return (
         <div id="container" className="flex h-screen bg-neutral-700">
+            {SHOW_DEBUG_INFO && (
+                <div className="absolute top-0 left-0 right-0 z-20 p-2 text-xs font-mono text-white/60 pointer-events-none">state: {pickerState}</div>
+            )}
             <div
                 id="interaction-area"
                 className="flex-1 touch-none pointer-none select-none"
@@ -167,6 +177,7 @@ export const PickerArea: React.FC = () => {
                 onTeamModeChange={onTeamModeChange}
                 stickyMode={stickyMode}
                 onStickyModeChange={onStickyModeChange}
+                colorIndicators={colorIndicators ?? []}
             />
         </div>
     );

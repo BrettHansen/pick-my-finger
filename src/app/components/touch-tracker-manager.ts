@@ -6,6 +6,7 @@ export interface TouchTracker {
     y: number;
     color: string;
     active: boolean;
+    live: boolean;
     rank?: number;
     teamId?: number;
 }
@@ -18,12 +19,15 @@ export class TouchTrackerManager {
 
     public getActiveTrackers = () => this.getTrackers().filter(({ active }) => active);
 
+    public getLiveTrackers = () => this.getTrackers().filter(({ live }) => live);
+
     public addTracker = (id: number, x: number, y: number, assignColor: boolean = true) => {
         this.touchTrackers.set(id, {
             id,
             x,
             y,
             active: true,
+            live: true,
             color: assignColor ? this.colorManager.getColor(id) : this.colorManager.getDefaultColor(),
         });
     };
@@ -36,32 +40,43 @@ export class TouchTrackerManager {
         }
     };
 
+    public killTracker = (id: number) => {
+        const existingTracker = this.touchTrackers.get(id);
+        if (existingTracker) {
+            existingTracker.live = false;
+        }
+    };
+
     public deactivateTracker = (id: number) => {
         const existingTracker = this.touchTrackers.get(id);
-
         if (existingTracker) {
             existingTracker.active = false;
+            this.colorManager.releaseColor(id);
+
+            if (existingTracker.teamId !== undefined) {
+                this.colorManager.releaseColor(existingTracker.teamId);
+            }
         }
+    };
+
+    public deactivateAllTrackers = () => {
+        this.touchTrackers.forEach(({ id }) => this.deactivateTracker(id));
     };
 
     public removeTracker = (id: number) => {
-        const existingTracker = this.touchTrackers.get(id);
-
-        if (existingTracker && existingTracker.teamId) {
-            this.colorManager.releaseColor(existingTracker.teamId);
-        }
-
-        this.colorManager.releaseColor(id);
+        this.deactivateTracker(id);
         this.touchTrackers.delete(id);
     };
 
-    public removeInactiveTrackers = () => {
-        this.touchTrackers.forEach(({ id, active }) => {
-            if (!active) {
+    public removeDeadTrackers = () => {
+        this.touchTrackers.forEach(({ id, live }) => {
+            if (!live) {
                 this.removeTracker(id);
             }
         });
     };
+
+    public getColorManager = () => this.colorManager;
 
     public removeAllTrackers = () => {
         this.touchTrackers.forEach(({ id }) => this.removeTracker(id));
