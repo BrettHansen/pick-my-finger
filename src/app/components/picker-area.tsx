@@ -24,7 +24,7 @@ export const PickerArea: React.FC = () => {
     const trackerManager = useRef(new TouchTrackerManager()).current;
 
     useEffect(() => {
-        setColorIndicators(trackerManager.getColorManager().getColorIndicators());
+        setColorIndicators(trackerManager.getColorIndicators());
     }, []);
 
     const onTeamModeChange = (newTeamMode: TeamMode) => {
@@ -145,7 +145,7 @@ export const PickerArea: React.FC = () => {
         }
 
         setTouchTrackers(trackerManager.getTrackers());
-        setColorIndicators(trackerManager.getColorManager().getColorIndicators());
+        setColorIndicators(trackerManager.getColorIndicators());
         setIsControlLocked(trackerManager.getLiveTrackers().length > 0);
     };
 

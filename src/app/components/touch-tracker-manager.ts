@@ -21,6 +21,8 @@ export class TouchTrackerManager {
 
     public getLiveTrackers = () => this.getTrackers().filter(({ live }) => live);
 
+    public getColorIndicators = () => this.colorManager.getColorIndicators();
+
     public addTracker = (id: number, x: number, y: number, assignColor: boolean = true) => {
         this.touchTrackers.set(id, {
             id,
@@ -75,8 +77,6 @@ export class TouchTrackerManager {
             }
         });
     };
-
-    public getColorManager = () => this.colorManager;
 
     public removeAllTrackers = () => {
         this.touchTrackers.forEach(({ id }) => this.removeTracker(id));

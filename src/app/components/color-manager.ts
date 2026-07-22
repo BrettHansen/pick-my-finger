@@ -3,33 +3,45 @@ export interface ColorIndicator {
     isAvailable: boolean;
 }
 
+interface ColorRegister {
+    color: string;
+    id: number | undefined;
+}
+
 export class ColorManager {
     private COLORS = ['red', 'yellow', 'green', 'blue', 'black', 'grey'];
 
-    private availableColors = [...this.COLORS];
+    private colorRegistry = this.COLORS.map<ColorRegister>((color) => ({ color, id: undefined }));
     private idColorMap = new Map<number, string>();
     private defaultColor = 'white';
 
     public getDefaultColor = () => this.defaultColor;
 
-    public getColorIndicators = (): ColorIndicator[] => {
-        const assignedColors = new Set([...this.idColorMap.values()]);
-        return this.COLORS.map((color) => ({
-            color,
-            isAvailable: !assignedColors.has(color),
-        }));
+    public getColorIndicators = () => this.colorRegistry.map(({ color, id }) => ({ color, isAvailable: !id }));
+
+    private assignNextColor = (id: number) => {
+        const unassignedColorIndex = this.colorRegistry.findIndex(({ id }) => id === undefined);
+
+        if (unassignedColorIndex !== -1) {
+            this.colorRegistry[unassignedColorIndex].id = id;
+            return this.colorRegistry[unassignedColorIndex].color;
+        } else {
+            return this.getDefaultColor();
+        }
     };
 
     public getColor = (id: number) => {
-        return this.idColorMap.getOrInsertComputed(id, () => this.availableColors.shift() ?? this.getDefaultColor());
+        return this.idColorMap.getOrInsertComputed(id, this.assignNextColor);
     };
 
     public releaseColor = (id: number) => {
         const color = this.idColorMap.get(id);
 
         if (color) {
-            if (color !== this.getDefaultColor()) {
-                this.availableColors.unshift(color);
+            const register = this.colorRegistry.find((register) => register.id === id);
+
+            if (register) {
+                register.id = undefined;
             }
 
             this.idColorMap.delete(id);
@@ -37,6 +49,7 @@ export class ColorManager {
     };
 
     public releaseAllColors = () => {
-        this.idColorMap.keys().forEach((id) => this.releaseColor(id));
+        this.idColorMap.clear();
+        this.colorRegistry.forEach((register) => (register.id = undefined));
     };
 }
